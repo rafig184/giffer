@@ -77,11 +77,12 @@ class _MyHomePageState extends State<MyHomePage> {
       } catch (e) {
         print(e);
       }
-    } else if (gifsView == GifsProvider.Giphy) {
+    } else if (gifsView == GifsProvider.Tenor) {
       var api =
           "https://tenor.googleapis.com/v2/search?q=$searchValue&key=$tenorApiKey&client_key=my_test_app&";
       try {
         final response = await http.get(Uri.parse(api));
+        print('tenor response : ${response.body}');
         if (response.statusCode != 200) {
           throw Exception('Failed to load gifs');
         } else {
@@ -89,8 +90,8 @@ class _MyHomePageState extends State<MyHomePage> {
             final data = jsonDecode(response.body);
             gifsList = data['data'];
             isSearch = true;
-            print(response.body);
           });
+          print('tenor response : $gifsList');
         }
       } catch (e) {
         print(e);
@@ -201,32 +202,36 @@ class _MyHomePageState extends State<MyHomePage> {
                 ],
               ),
             ),
-            SegmentedButton<GifsProvider>(
-                style: SegmentedButton.styleFrom(
-                  backgroundColor: Colors.grey[200],
-                  foregroundColor: const Color.fromARGB(255, 54, 98, 244),
-                  selectedForegroundColor: Colors.white,
-                  selectedBackgroundColor: Colors.green,
-                ),
-                segments: const <ButtonSegment<GifsProvider>>[
-                  ButtonSegment<GifsProvider>(
-                    value: GifsProvider.Giphy,
-                    label: Text('Giphy'),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: SegmentedButton<GifsProvider>(
+                  style: SegmentedButton.styleFrom(
+                    minimumSize: Size(50, 15),
+                    backgroundColor: Colors.grey[200],
+                    foregroundColor: const Color.fromARGB(255, 54, 98, 244),
+                    selectedForegroundColor: Colors.white,
+                    selectedBackgroundColor: Colors.green,
                   ),
-                  ButtonSegment<GifsProvider>(
-                    value: GifsProvider.Tenor,
-                    label: Text('Tenor'),
-                  ),
-                ],
-                selected: <GifsProvider>{gifsView},
-                onSelectionChanged: (Set<GifsProvider> newSelection) {
-                  setState(() {
-                    // By default there is only a single segment that can be
-                    // selected at one time, so its value is always the first
-                    // item in the selected set.
-                    gifsView = newSelection.first;
-                  });
-                }),
+                  segments: const <ButtonSegment<GifsProvider>>[
+                    ButtonSegment<GifsProvider>(
+                      value: GifsProvider.Giphy,
+                      label: Text('Giphy'),
+                    ),
+                    ButtonSegment<GifsProvider>(
+                      value: GifsProvider.Tenor,
+                      label: Text('Tenor'),
+                    ),
+                  ],
+                  selected: <GifsProvider>{gifsView},
+                  onSelectionChanged: (Set<GifsProvider> newSelection) {
+                    setState(() {
+                      // By default there is only a single segment that can be
+                      // selected at one time, so its value is always the first
+                      // item in the selected set.
+                      gifsView = newSelection.first;
+                    });
+                  }),
+            ),
             isSearch
                 ? Expanded(
                     child: gifsList.isEmpty
