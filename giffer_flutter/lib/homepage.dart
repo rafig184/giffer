@@ -8,6 +8,8 @@ import 'package:show_network_image/show_network_image.dart';
 import 'package:social_share/social_share.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:giffer_flutter/colors.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage();
@@ -16,16 +18,18 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-enum GifsProvider { Giphy, Tenor }
+enum GifsProvider { Giphy, Tenor, Trending }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<dynamic> gifsList = [];
+  List<dynamic> gifsListGiphy = [];
+  List<dynamic> gifsListTenor = [];
   bool isSearch = false;
   TextEditingController searchController = TextEditingController();
   String giphyApiKey = "K1HxaGhOObjpIjOZh0d3mZcsv1pHflei";
   String tenorApiKey = "AIzaSyBKMCcIReVm4_0YpFUnlhuZkRD_aOfrNCc";
-  bool isLoading = false;
-  GifsProvider gifsView = GifsProvider.Giphy;
+  bool isLoadingSnackBar = false;
+  bool isLoadingGifs = false;
+  GifsProvider gifsView = GifsProvider.Trending;
 
   @override
   void initState() {
@@ -33,29 +37,48 @@ class _MyHomePageState extends State<MyHomePage> {
     fetchTrandingGifs();
   }
 
+  @override
+  void dispose() {
+    super.dispose();
+    searchController.dispose();
+  }
+
+  final spinkit = const SpinKitFadingCircle(
+    color: primaryColor,
+    size: 80.0,
+  );
+
   Future fetchTrandingGifs() async {
     var api =
         "https://api.giphy.com/v1/gifs/trending?api_key=K1HxaGhOObjpIjOZh0d3mZcsv1pHflei&limit=25&offset=0&rating=g&bundle=messaging_non_clips";
     try {
+      setState(() {
+        isLoadingGifs = true;
+      });
       final response = await http.get(Uri.parse(api));
       if (response.statusCode != 200) {
         throw Exception('Failed to load gifs');
       } else {
         setState(() {
           final data = jsonDecode(response.body);
-          gifsList = data['data'];
+          gifsListGiphy = data['data'];
           isSearch = true;
           print(response.body);
         });
       }
     } catch (e) {
       print(e);
+    } finally {
+      setState(() {
+        isLoadingGifs = false;
+      });
     }
   }
 
   Future fetchGifs() async {
     setState(() {
-      gifsList = [];
+      gifsListGiphy = [];
+      gifsListTenor = [];
     });
 
     var searchValue = searchController.text;
@@ -63,24 +86,34 @@ class _MyHomePageState extends State<MyHomePage> {
       var api =
           'https://api.giphy.com/v1/gifs/search?api_key=$giphyApiKey&q=$searchValue&limit=&offset=0&rating=g&lang=en&bundle=messaging_non_clips';
       try {
+        setState(() {
+          isLoadingGifs = true;
+        });
         final response = await http.get(Uri.parse(api));
         if (response.statusCode != 200) {
           throw Exception('Failed to load gifs');
         } else {
           setState(() {
             final data = jsonDecode(response.body);
-            gifsList = data['data'];
+            gifsListGiphy = data['data'];
             isSearch = true;
             print(response.body);
           });
         }
       } catch (e) {
         print(e);
+      } finally {
+        setState(() {
+          isLoadingGifs = false;
+        });
       }
     } else if (gifsView == GifsProvider.Tenor) {
       var api =
           "https://tenor.googleapis.com/v2/search?q=$searchValue&key=$tenorApiKey&client_key=my_test_app&";
       try {
+        setState(() {
+          isLoadingGifs = true;
+        });
         final response = await http.get(Uri.parse(api));
         print('tenor response : ${response.body}');
         if (response.statusCode != 200) {
@@ -88,21 +121,28 @@ class _MyHomePageState extends State<MyHomePage> {
         } else {
           setState(() {
             final data = jsonDecode(response.body);
-            gifsList = data['data'];
+            print('data : $data');
+            gifsListTenor = data['results'];
             isSearch = true;
           });
-          print('tenor response : $gifsList');
         }
       } catch (e) {
         print(e);
+      } finally {
+        setState(() {
+          isLoadingGifs = false;
+        });
       }
     }
+    print('tenor response ===> : ${gifsListTenor}');
   }
 
   void clearSearch() {
+    fetchTrandingGifs();
     setState(() {
       isSearch = false;
-      gifsList = [];
+      gifsListGiphy = [];
+      gifsListTenor = [];
       searchController.clear();
     });
   }
@@ -131,9 +171,9 @@ class _MyHomePageState extends State<MyHomePage> {
           notificationVisibility: NotificationVisibility.VISIBILITY_VISIBLE);
       final filePath = '${directory.path}/giffer/test.gif';
       setState(() {
-        isLoading = true;
+        isLoadingSnackBar = true;
       });
-      if (isLoading) {
+      if (isLoadingSnackBar) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Preparing GIF to share...')),
         );
@@ -142,7 +182,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
       if (await File(filePath).exists()) {
         setState(() {
-          isLoading = false;
+          isLoadingSnackBar = false;
         });
         await SocialShare.shareOptions("", imagePath: filePath);
       } else {
@@ -174,8 +214,14 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text("Giffer"),
+        toolbarHeight: 70,
+        backgroundColor: primaryColor,
+        title: Center(
+          child: Image.asset(
+            'assets/logo.png',
+            height: 40,
+          ),
+        ),
       ),
       body: Center(
         child: Column(
@@ -191,6 +237,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 hintText: "Search gifs...",
                 onChanged: (value) {
                   setState(() {});
+                },
+                onSubmitted: (value) {
+                  fetchGifs();
                 },
                 trailing: <Widget>[
                   TextButton(
@@ -208,14 +257,18 @@ class _MyHomePageState extends State<MyHomePage> {
                   style: SegmentedButton.styleFrom(
                     minimumSize: Size(50, 15),
                     backgroundColor: Colors.grey[200],
-                    foregroundColor: const Color.fromARGB(255, 54, 98, 244),
+                    foregroundColor: secondaryColor,
                     selectedForegroundColor: Colors.white,
-                    selectedBackgroundColor: Colors.green,
+                    selectedBackgroundColor: secondaryColor,
                   ),
                   segments: const <ButtonSegment<GifsProvider>>[
                     ButtonSegment<GifsProvider>(
                       value: GifsProvider.Giphy,
                       label: Text('Giphy'),
+                    ),
+                    ButtonSegment<GifsProvider>(
+                      value: GifsProvider.Trending,
+                      label: Text('Trending'),
                     ),
                     ButtonSegment<GifsProvider>(
                       value: GifsProvider.Tenor,
@@ -225,61 +278,80 @@ class _MyHomePageState extends State<MyHomePage> {
                   selected: <GifsProvider>{gifsView},
                   onSelectionChanged: (Set<GifsProvider> newSelection) {
                     setState(() {
-                      // By default there is only a single segment that can be
-                      // selected at one time, so its value is always the first
-                      // item in the selected set.
                       gifsView = newSelection.first;
+                      if (gifsView == GifsProvider.Trending) {
+                        fetchTrandingGifs();
+                      } else {
+                        fetchGifs();
+                      }
                     });
                   }),
             ),
             isSearch
                 ? Expanded(
-                    child: gifsList.isEmpty
-                        ? const Text("No GIFs found")
-                        : GridView.builder(
-                            padding: const EdgeInsets.all(10.0),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              childAspectRatio: 1.2,
-                              crossAxisSpacing: 10.0,
-                              mainAxisSpacing: 10.0,
-                            ),
-                            itemCount: gifsList.length,
-                            itemBuilder: (context, index) {
-                              return InkWell(
-                                onTap: () => onGifTap(gifsList[index]['images']
-                                    ['original']['url']),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(10.0),
-                                    color: Colors.grey.shade200,
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(10.0),
-                                    child: ShowNetworkImage(
-                                      imageSrc: gifsList[index]['images']
-                                          ['original']['url'],
-                                      mobileBoxFit: BoxFit.fill,
-                                      mobileHeight: 300,
-                                      mobileWidth: 300,
-                                    ),
-                                  ),
+                    child: isLoadingGifs
+                        ? spinkit
+                        : gifsListGiphy.isEmpty && gifsListTenor.isEmpty
+                            ? const Text("No GIFs found")
+                            : GridView.builder(
+                                padding: const EdgeInsets.all(10.0),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  childAspectRatio: 1.2,
+                                  crossAxisSpacing: 10.0,
+                                  mainAxisSpacing: 10.0,
                                 ),
-                              );
-                            },
-                          ),
+                                itemCount: gifsListGiphy.isNotEmpty
+                                    ? gifsListGiphy.length
+                                    : gifsListTenor.length,
+                                itemBuilder: (context, index) {
+                                  return InkWell(
+                                    onTap: () => gifsView == GifsProvider.Giphy
+                                        ? onGifTap(gifsListGiphy[index]
+                                            ['images']['original']['url'])
+                                        : gifsView == GifsProvider.Trending
+                                            ? onGifTap(gifsListGiphy[index]
+                                                ['images']['original']['url'])
+                                            : onGifTap(gifsListTenor[index]
+                                                    ['media_formats']['gif']
+                                                ['url']),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius:
+                                            BorderRadius.circular(10.0),
+                                        color: Colors.grey.shade200,
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius:
+                                            BorderRadius.circular(10.0),
+                                        child: ShowNetworkImage(
+                                          imageSrc: gifsView ==
+                                                  GifsProvider.Giphy
+                                              ? gifsListGiphy[index]['images']
+                                                  ['original']['url']
+                                              : gifsView ==
+                                                      GifsProvider.Trending
+                                                  ? gifsListGiphy[index]
+                                                          ['images']['original']
+                                                      ['url']
+                                                  : gifsListTenor[index]
+                                                          ['media_formats']
+                                                      ['gif']['url'],
+                                          mobileBoxFit: BoxFit.fill,
+                                          mobileHeight: 300,
+                                          mobileWidth: 300,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                   )
                 : Container(),
           ],
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    searchController.dispose();
   }
 }
