@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:giffer_flutter/colors.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 
 class GifsPage extends StatefulWidget {
   const GifsPage();
@@ -29,13 +30,19 @@ class _GifsPageState extends State<GifsPage> {
   TextEditingController searchController = TextEditingController();
   String giphyApiKey = "K1HxaGhOObjpIjOZh0d3mZcsv1pHflei";
   String tenorApiKey = "AIzaSyBKMCcIReVm4_0YpFUnlhuZkRD_aOfrNCc";
+  String geminiAIKey = "AIzaSyDq-ujx6iqbRrhLJPOSoCMxME30AuWUj_I";
   bool isLoadingSnackBar = false;
   bool isLoadingGifs = false;
+  bool isSearchWithAiChecked = false;
+  String isAISearchStatus = "off";
   GifsProvider gifsView = GifsProvider.Trending;
   bool isSafeChecked = true;
   String isSafeSearch = "on";
   String ratingGiphy = "g";
   String ratingTenor = "high";
+  String resultAI = "";
+  String giphyApi = "";
+  String tenorApi = "";
 
   @override
   void initState() {
@@ -53,6 +60,24 @@ class _GifsPageState extends State<GifsPage> {
     color: primaryColor,
     size: 80.0,
   );
+
+  Future<void> searchWithAi(searchText) async {
+    // Access your API key as an environment variable (see "Set up your API key" above)
+    final apiKey = geminiAIKey;
+
+    // The Gemini 1.5 models are versatile and work with both text-only and multimodal prompts
+    final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
+    final content = [
+      Content.text(
+          'give me one best keywords for a gif based on this prompt : $searchText')
+    ];
+    final response = await model.generateContent(content);
+    print(searchText);
+    print(response.text);
+    setState(() {
+      resultAI = response.text.toString();
+    });
+  }
 
   Future fetchTrandingGifs() async {
     var api =
@@ -88,6 +113,7 @@ class _GifsPageState extends State<GifsPage> {
     });
 
     var searchValue = searchController.text;
+
     if (gifsView == GifsProvider.Trending) {
       setState(() {
         gifsView = GifsProvider.Giphy;
@@ -104,14 +130,25 @@ class _GifsPageState extends State<GifsPage> {
           ratingGiphy = "g";
         });
       }
-      var api =
-          'https://api.giphy.com/v1/gifs/search?api_key=$giphyApiKey&q=$searchValue&limit=50&offset=0&rating=$ratingGiphy&lang=en&bundle=messaging_non_clips';
+      if (isSearchWithAiChecked) {
+        await searchWithAi(searchValue);
+        setState(() {
+          giphyApi =
+              'https://api.giphy.com/v1/gifs/search?api_key=$giphyApiKey&q=$resultAI&limit=50&offset=0&rating=$ratingGiphy&lang=en&bundle=messaging_non_clips';
+        });
+      } else {
+        setState(() {
+          giphyApi =
+              'https://api.giphy.com/v1/gifs/search?api_key=$giphyApiKey&q=$searchValue&limit=50&offset=0&rating=$ratingGiphy&lang=en&bundle=messaging_non_clips';
+        });
+      }
+      print(resultAI);
       try {
         setState(() {
           isLoadingGifs = true;
         });
 
-        final response = await http.get(Uri.parse(api));
+        final response = await http.get(Uri.parse(giphyApi));
         if (response.statusCode != 200) {
           throw Exception('Failed to load gifs');
         } else {
@@ -139,13 +176,25 @@ class _GifsPageState extends State<GifsPage> {
           ratingTenor = "high";
         });
       }
-      var api =
-          "https://tenor.googleapis.com/v2/search?q=$searchValue&key=$tenorApiKey&limit=50&client_key=my_test_app&contentfilter=$ratingTenor";
+
+      if (isSearchWithAiChecked) {
+        await searchWithAi(searchValue);
+        setState(() {
+          tenorApi =
+              "https://tenor.googleapis.com/v2/search?q=$resultAI&key=$tenorApiKey&limit=50&client_key=my_test_app&contentfilter=$ratingTenor";
+        });
+      } else {
+        setState(() {
+          tenorApi =
+              "https://tenor.googleapis.com/v2/search?q=$searchValue&key=$tenorApiKey&limit=50&client_key=my_test_app&contentfilter=$ratingTenor";
+        });
+      }
+
       try {
         setState(() {
           isLoadingGifs = true;
         });
-        final response = await http.get(Uri.parse(api));
+        final response = await http.get(Uri.parse(tenorApi));
         if (response.statusCode != 200) {
           throw Exception('Failed to load gifs');
         } else {
@@ -301,6 +350,26 @@ class _GifsPageState extends State<GifsPage> {
                       });
                     },
                   ),
+                  const SizedBox(width: 30),
+                  Text("AI Search $isAISearchStatus "),
+                  MSHCheckbox(
+                    size: 20,
+                    value: isSearchWithAiChecked,
+                    colorConfig: MSHColorConfig.fromCheckedUncheckedDisabled(
+                      checkedColor: secondaryColor,
+                    ),
+                    style: MSHCheckboxStyle.fillScaleCheck,
+                    onChanged: (selected) {
+                      setState(() {
+                        isSearchWithAiChecked = selected;
+                        if (!isSearchWithAiChecked) {
+                          isAISearchStatus = "off";
+                        } else {
+                          isAISearchStatus = "on";
+                        }
+                      });
+                    },
+                  ),
                 ],
               ),
             ),
@@ -358,7 +427,7 @@ class _GifsPageState extends State<GifsPage> {
                     child: isLoadingGifs
                         ? spinkit
                         : gifsListGiphy.isEmpty && gifsListTenor.isEmpty
-                            ? const Text("No GIFs found")
+                            ? const Text("Searching for the right GIF..")
                             : GridView.builder(
                                 padding: const EdgeInsets.all(10.0),
                                 gridDelegate:

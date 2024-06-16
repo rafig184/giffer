@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:giffer_flutter/gifs.dart';
 import 'package:giffer_flutter/images.dart';
 import 'package:giffer_flutter/colors.dart';
+import 'package:giffer_flutter/memes.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage();
@@ -20,7 +21,7 @@ class _MyHomePageState extends State<MyHomePage> {
   static List<Widget> _widgetOptions = <Widget>[
     ImagesPage(),
     GifsPage(),
-    GifsPage(),
+    MemesPage(),
   ];
 
   void _onItemTapped(int index) {
@@ -54,7 +55,7 @@ class _MyHomePageState extends State<MyHomePage> {
             label: "Gifs",
           ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.video_camera_back), label: "Videos"),
+              icon: Icon(Icons.image_rounded), label: "Memes"),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: secondaryColor,
