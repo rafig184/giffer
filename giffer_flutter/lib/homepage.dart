@@ -47,15 +47,14 @@ class _MyHomePageState extends State<MyHomePage> {
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.image),
+            icon: Icon(Icons.photo_library_rounded),
             label: "Images",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.gif_box_rounded),
             label: "Gifs",
           ),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.image_rounded), label: "Memes"),
+          BottomNavigationBarItem(icon: Icon(Icons.photo), label: "Memes"),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: secondaryColor,

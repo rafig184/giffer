@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:giffer_flutter/colors.dart';
+import 'package:flutter_langdetect/flutter_langdetect.dart' as langdetect;
 
 class MemesPage extends StatefulWidget {
   const MemesPage();
@@ -31,9 +32,13 @@ class _MemesPageState extends State<MemesPage> {
   TextEditingController bottomTextController = TextEditingController();
   bool isLoadingSnackBar = false;
   bool isLoadingMemes = false;
+  bool isLoadingMemesPreview = false;
   bool isMemeSave = false;
   bool isMemeShare = false;
   String memeUrl = "";
+  bool isPreviewMeme = false;
+  bool isSelectPreview = false;
+  String previewMeme = "";
 
   @override
   void initState() {
@@ -86,17 +91,39 @@ class _MemesPageState extends State<MemesPage> {
     print(memesList);
   }
 
-  Future<void> createMeme(topText, bottomText, id) async {
+  Future<void> createMeme(String topText, String bottomText, id) async {
+    await langdetect.initLangDetect();
+
+    if (topText.isNotEmpty) {
+      final languageTop = langdetect.detect(topText);
+      print('Detected language (top): $languageTop');
+      if (languageTop == "he") {
+        topText = topText.split('').reversed.join('');
+      }
+    }
+
+    if (bottomText.isNotEmpty) {
+      final languageBottom = langdetect.detect(bottomText);
+      print('Detected language (bottom): $languageBottom');
+      if (languageBottom == "he") {
+        bottomText = bottomText.split('').reversed.join('');
+      }
+    }
+
     var url = "https://api.imgflip.com/caption_image";
     var params = {
       "template_id": id.toString(),
       "username": "rafiganon",
       "password": "Rg1841989!",
-      "text0": topText.toString(),
-      "text1": bottomText.toString()
+      "text0": topText,
+      "text1": bottomText
     };
 
     try {
+      setState(() {
+        isLoadingMemesPreview = true;
+        // isPreviewMeme = false;
+      });
       final response = await http.post(
         Uri.parse(url),
         body: params,
@@ -107,11 +134,15 @@ class _MemesPageState extends State<MemesPage> {
         print(result);
 
         var memeUrl = result['data']['url'];
+        print(memeUrl);
+        setState(() {
+          previewMeme = memeUrl;
+        });
 
         if (isMemeSave) {
-          downloadImage(memeUrl, id);
+          downloadImage(previewMeme, id);
         } else if (isMemeShare) {
-          memeShare(memeUrl);
+          memeShare(previewMeme);
         }
 
         setState(() {
@@ -123,12 +154,15 @@ class _MemesPageState extends State<MemesPage> {
       }
     } catch (e) {
       print(e);
+    } finally {
+      setState(() {
+        isLoadingMemesPreview = false;
+      });
     }
   }
 
   Future<void> searchMemes() async {
     var searchValue = searchController.text;
-
     setState(() {
       filteredMemes = memesList
           .where((meme) =>
@@ -267,6 +301,10 @@ class _MemesPageState extends State<MemesPage> {
                                   Navigator.of(context).pop();
                                   topTextController.clear();
                                   bottomTextController.clear();
+                                  setState(() {
+                                    previewMeme = "";
+                                  });
+                                  // isPreviewMeme = false;
                                 },
                                 child: const Icon(Icons.close)),
                           ],
@@ -287,69 +325,82 @@ class _MemesPageState extends State<MemesPage> {
                             hintText: "Enter Bottom Text...",
                           ),
                         ),
+
                         const SizedBox(height: 15),
-                        Image.network(
-                          imageUrl,
-                          height: 300,
-                          fit: BoxFit.cover,
+                        isLoadingMemesPreview
+                            ? spinkit
+                            : Image.network(
+                                previewMeme.isEmpty ? imageUrl : previewMeme,
+                                fit: BoxFit.cover,
+                              ),
+                        const SizedBox(height: 15),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton(
+                                style: ButtonStyle(
+                                    backgroundColor:
+                                        MaterialStateProperty.all<Color>(
+                                            secondaryColor)),
+                                onPressed: () async {
+                                  await createMeme(topTextController.text,
+                                      bottomTextController.text, id);
+                                  setState(() {});
+                                },
+                                child: const Text(
+                                  "Preview",
+                                  style: TextStyle(color: Colors.white),
+                                )),
+                          ],
                         ),
-                        const SizedBox(height: 15),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            // ElevatedButton(
-                            //   style: ButtonStyle(
-                            //       backgroundColor:
-                            //           MaterialStateProperty.all<Color>(
-                            //               secondaryColor)),
-                            //   onPressed: () async {
-                            //     Navigator.of(context).pop();
-                            //     topTextController.clear();
-                            //     bottomTextController.clear();
-                            //   },
-                            //   child: const Text(
-                            //     "Close",
-                            //     style: TextStyle(color: Colors.white),
-                            //   ),
-                            // ),
+                            ElevatedButton(
+                                style: ButtonStyle(
+                                    backgroundColor:
+                                        MaterialStateProperty.all<Color>(
+                                            secondaryColor)),
+                                onPressed: () async {
+                                  setState(() {
+                                    isMemeSave = true;
+                                  });
+                                  await createMeme(topTextController.text,
+                                      bottomTextController.text, id);
+
+                                  Navigator.of(context).pop();
+                                  topTextController.clear();
+                                  bottomTextController.clear();
+                                  setState(() {
+                                    previewMeme = "";
+                                  });
+                                },
+                                child: const Icon(
+                                  Icons.save_alt,
+                                  color: Colors.white,
+                                )),
                             ElevatedButton(
                               style: ButtonStyle(
                                   backgroundColor:
                                       MaterialStateProperty.all<Color>(
                                           secondaryColor)),
                               onPressed: () async {
-                                createMeme(topTextController.text,
-                                    bottomTextController.text, id);
-                                setState(() {
-                                  isMemeSave = true;
-                                });
-                                Navigator.of(context).pop();
-                                topTextController.clear();
-                                bottomTextController.clear();
-                              },
-                              child: const Text(
-                                "Save",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                            ElevatedButton(
-                              style: ButtonStyle(
-                                  backgroundColor:
-                                      MaterialStateProperty.all<Color>(
-                                          secondaryColor)),
-                              onPressed: () async {
-                                createMeme(topTextController.text,
-                                    bottomTextController.text, id);
                                 setState(() {
                                   isMemeShare = true;
                                 });
+                                await createMeme(topTextController.text,
+                                    bottomTextController.text, id);
+
                                 Navigator.of(context).pop();
                                 topTextController.clear();
                                 bottomTextController.clear();
+                                setState(() {
+                                  previewMeme = "";
+                                });
                               },
-                              child: const Text(
-                                "Share",
-                                style: TextStyle(color: Colors.white),
+                              child: const Icon(
+                                Icons.share,
+                                color: Colors.white,
                               ),
                             ),
                           ],
@@ -421,12 +472,8 @@ class _MemesPageState extends State<MemesPage> {
                                         filteredMemes[index]['url'],
                                         filteredMemes[index]['id'],
                                         filteredMemes[index]['name']),
-                                    // onLongPress: () => imageView ==
-                                    //         ImageProvider.Pixabay
-                                    //     ? onLongPress(
-                                    //         memesList[index]['webformatURL'])
-                                    //     : onLongPress(
-                                    //         memesList[index]['src']['large2x']),
+                                    onLongPress: () => onLongPress(
+                                        filteredMemes[index]['url']),
                                     child: Container(
                                       decoration: BoxDecoration(
                                         borderRadius:
