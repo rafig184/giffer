@@ -5,6 +5,7 @@ import 'package:giffer_flutter/gifs.dart';
 import 'package:giffer_flutter/images.dart';
 import 'package:giffer_flutter/colors.dart';
 import 'package:giffer_flutter/memes.dart';
+import 'package:giffer_flutter/stickers.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage();
@@ -16,10 +17,11 @@ class MyHomePage extends StatefulWidget {
 enum GifsProvider { Giphy, Tenor, Trending }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _selectedIndex = 1;
+  int _selectedIndex = 2;
 
   static List<Widget> _widgetOptions = <Widget>[
     ImagesPage(),
+    StickersPage(),
     GifsPage(),
     MemesPage(),
   ];
@@ -51,6 +53,10 @@ class _MyHomePageState extends State<MyHomePage> {
             label: "Images",
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.sticky_note_2_rounded),
+            label: "Stickers",
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.gif_box_rounded),
             label: "Gifs",
           ),
@@ -60,6 +66,10 @@ class _MyHomePageState extends State<MyHomePage> {
         selectedItemColor: secondaryColor,
         unselectedItemColor: Colors.grey,
         // selectedItemColor: secondaryColor,
+        selectedFontSize: 14,
+        unselectedFontSize: 12,
+        showUnselectedLabels: true,
+
         onTap: _onItemTapped,
       ),
     );

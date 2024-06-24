@@ -14,31 +14,29 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:giffer_flutter/colors.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
-class GifsPage extends StatefulWidget {
-  const GifsPage();
+class StickersPage extends StatefulWidget {
+  const StickersPage();
 
   @override
-  State<GifsPage> createState() => _GifsPageState();
+  State<StickersPage> createState() => _StickersPageState();
 }
 
-enum GifsProvider { Giphy, Tenor, Trending }
+enum StickerProvider { Tenor, Trending }
 
-class _GifsPageState extends State<GifsPage> {
-  List<dynamic> gifsListGiphy = [];
-  List<dynamic> gifsListTenor = [];
+class _StickersPageState extends State<StickersPage> {
+  List<dynamic> stickerListGiphy = [];
+  List<dynamic> stickerListTenor = [];
   bool isSearch = false;
   TextEditingController searchController = TextEditingController();
-  String giphyApiKey = "K1HxaGhOObjpIjOZh0d3mZcsv1pHflei";
   String tenorApiKey = "AIzaSyBKMCcIReVm4_0YpFUnlhuZkRD_aOfrNCc";
   String geminiAIKey = "AIzaSyDq-ujx6iqbRrhLJPOSoCMxME30AuWUj_I";
   bool isLoadingSnackBar = false;
-  bool isLoadingGifs = false;
+  bool isLoadingSticker = false;
   bool isSearchWithAiChecked = false;
   String isAISearchStatus = "off";
-  GifsProvider gifsView = GifsProvider.Trending;
+  StickerProvider stickerView = StickerProvider.Trending;
   bool isSafeChecked = true;
   String isSafeSearch = "on";
-  String ratingGiphy = "g";
   String ratingTenor = "high";
   String resultAI = "";
   String giphyApi = "";
@@ -47,7 +45,7 @@ class _GifsPageState extends State<GifsPage> {
   @override
   void initState() {
     super.initState();
-    fetchTrandingGifs();
+    fetchTrandingStickers();
   }
 
   @override
@@ -69,7 +67,7 @@ class _GifsPageState extends State<GifsPage> {
     final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
     final content = [
       Content.text(
-          'give me one best keywords for a gif based on this prompt : $searchText')
+          'give me one best keywords for a sticker based on this prompt : $searchText')
     ];
     final response = await model.generateContent(content);
     print(searchText);
@@ -79,20 +77,21 @@ class _GifsPageState extends State<GifsPage> {
     });
   }
 
-  Future fetchTrandingGifs() async {
+  Future fetchTrandingStickers() async {
     var api =
-        "https://api.giphy.com/v1/gifs/trending?api_key=K1HxaGhOObjpIjOZh0d3mZcsv1pHflei&limit=25&offset=0&rating=g&bundle=messaging_non_clips";
+        "https://g.tenor.com/v1/trending?key=LIVDSRZULELA&searchfilter=sticker,static&limit=50";
+    var categoriesApi = "https://g.tenor.com/v1/categories?key=LIVDSRZULELA";
     try {
       setState(() {
-        isLoadingGifs = true;
+        isLoadingSticker = true;
       });
       final response = await http.get(Uri.parse(api));
       if (response.statusCode != 200) {
-        throw Exception('Failed to load gifs');
+        throw Exception('Failed to load stickers');
       } else {
         setState(() {
           final data = jsonDecode(response.body);
-          gifsListGiphy = data['data'];
+          stickerListTenor = data['results'];
           isSearch = true;
           print(response.body);
         });
@@ -101,72 +100,26 @@ class _GifsPageState extends State<GifsPage> {
       print(e);
     } finally {
       setState(() {
-        isLoadingGifs = false;
+        isLoadingSticker = false;
       });
     }
   }
 
-  Future fetchGifs() async {
+  Future fetchStickers() async {
     setState(() {
-      gifsListGiphy = [];
-      gifsListTenor = [];
+      stickerListGiphy = [];
+      stickerListTenor = [];
     });
 
     var searchValue = searchController.text;
 
-    if (gifsView == GifsProvider.Trending) {
+    if (stickerView == StickerProvider.Trending) {
       setState(() {
-        gifsView = GifsProvider.Giphy;
+        stickerView = StickerProvider.Tenor;
       });
     }
 
-    if (gifsView == GifsProvider.Giphy) {
-      if (!isSafeChecked) {
-        setState(() {
-          ratingGiphy = "r";
-        });
-      } else {
-        setState(() {
-          ratingGiphy = "g";
-        });
-      }
-      if (isSearchWithAiChecked) {
-        await searchWithAi(searchValue);
-        setState(() {
-          giphyApi =
-              'https://api.giphy.com/v1/gifs/search?api_key=$giphyApiKey&q=$resultAI&limit=50&offset=0&rating=$ratingGiphy&lang=en&bundle=messaging_non_clips';
-        });
-      } else {
-        setState(() {
-          giphyApi =
-              'https://api.giphy.com/v1/gifs/search?api_key=$giphyApiKey&q=$searchValue&limit=50&offset=0&rating=$ratingGiphy&lang=en&bundle=messaging_non_clips';
-        });
-      }
-      print(resultAI);
-      try {
-        setState(() {
-          isLoadingGifs = true;
-        });
-
-        final response = await http.get(Uri.parse(giphyApi));
-        if (response.statusCode != 200) {
-          throw Exception('Failed to load gifs');
-        } else {
-          setState(() {
-            final data = jsonDecode(response.body);
-            gifsListGiphy = data['data'];
-            isSearch = true;
-            print(response.body);
-          });
-        }
-      } catch (e) {
-        print(e);
-      } finally {
-        setState(() {
-          isLoadingGifs = false;
-        });
-      }
-    } else if (gifsView == GifsProvider.Tenor) {
+    if (stickerView == StickerProvider.Tenor) {
       if (!isSafeChecked) {
         setState(() {
           ratingTenor = "off";
@@ -181,26 +134,26 @@ class _GifsPageState extends State<GifsPage> {
         await searchWithAi(searchValue);
         setState(() {
           tenorApi =
-              "https://tenor.googleapis.com/v2/search?q=$resultAI&key=$tenorApiKey&limit=50&client_key=my_test_app&contentfilter=$ratingTenor";
+              "https://tenor.googleapis.com/v2/search?q=$resultAI&key=$tenorApiKey&limit=100&client_key=my_test_app&contentfilter=$ratingTenor&searchfilter=sticker,static";
         });
       } else {
         setState(() {
           tenorApi =
-              "https://tenor.googleapis.com/v2/search?q=$searchValue&key=$tenorApiKey&limit=50&client_key=my_test_app&contentfilter=$ratingTenor";
+              "https://tenor.googleapis.com/v2/search?q=$searchValue&key=$tenorApiKey&limit=100&client_key=my_test_app&contentfilter=$ratingTenor&searchfilter=sticker,static";
         });
       }
-
+      print(tenorApi);
       try {
         setState(() {
-          isLoadingGifs = true;
+          isLoadingSticker = true;
         });
         final response = await http.get(Uri.parse(tenorApi));
         if (response.statusCode != 200) {
-          throw Exception('Failed to load gifs');
+          throw Exception('Failed to load Stickers');
         } else {
           setState(() {
             final data = jsonDecode(response.body);
-            gifsListTenor = data['results'];
+            stickerListTenor = data['results'];
             print(response.body);
             isSearch = true;
           });
@@ -209,24 +162,24 @@ class _GifsPageState extends State<GifsPage> {
         print(e);
       } finally {
         setState(() {
-          isLoadingGifs = false;
+          isLoadingSticker = false;
         });
       }
     }
   }
 
   void clearSearch() {
-    fetchTrandingGifs();
+    fetchTrandingStickers();
     setState(() {
       isSearch = false;
-      gifsListGiphy = [];
-      gifsListTenor = [];
+      stickerListGiphy = [];
+      stickerListTenor = [];
       searchController.clear();
-      gifsView = GifsProvider.Trending;
+      stickerView = StickerProvider.Trending;
     });
   }
 
-  Future<void> onGifTap(gifUrl) async {
+  Future<void> onStickerTap(strickerURL) async {
     try {
       final directory = await getExternalStorageDirectory();
 
@@ -244,17 +197,17 @@ class _GifsPageState extends State<GifsPage> {
         await _clearDirectory(gifferDirectory);
       }
       AndroidDownloadManager.enqueue(
-          downloadUrl: gifUrl,
+          downloadUrl: strickerURL,
           downloadPath: directory.path + '/giffer',
-          fileName: "test.gif",
+          fileName: "test.png",
           notificationVisibility: NotificationVisibility.VISIBILITY_VISIBLE);
-      final filePath = '${directory.path}/giffer/test.gif';
+      final filePath = '${directory.path}/giffer/test.png';
       setState(() {
         isLoadingSnackBar = true;
       });
       if (isLoadingSnackBar) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Preparing GIF to share...')),
+          const SnackBar(content: Text('Preparing Sticker to share...')),
         );
       }
       await Future.delayed(Duration(seconds: 5));
@@ -268,12 +221,12 @@ class _GifsPageState extends State<GifsPage> {
         throw Exception("File not found after timeout");
       }
     } catch (e) {
-      print('Error sharing GIF: $e');
+      print('Error sharing Sticker: $e');
     }
   }
 
-  void onLongPress(gif) {
-    final imageProvider = Image.network(gif).image;
+  void onLongPress(sticker) {
+    final imageProvider = Image.network(sticker).image;
     showImageViewer(context, imageProvider, onViewerDismissed: () {
       print("dismissed");
     });
@@ -296,19 +249,19 @@ class _GifsPageState extends State<GifsPage> {
     }
   }
 
-  Future<void> downloadImage(gifUrl, gifId) async {
+  Future<void> downloadImage(stickerUrl, stickerId) async {
     try {
       AndroidDownloadManager.enqueue(
-          downloadUrl: gifUrl,
+          downloadUrl: stickerUrl,
           downloadPath: '/storage/emulated/0/Download',
-          fileName: "$gifId.gif",
+          fileName: "$stickerId.png",
           notificationVisibility: NotificationVisibility.VISIBILITY_VISIBLE);
       setState(() {
         isLoadingSnackBar = true;
       });
       if (isLoadingSnackBar) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Downloading gif...')),
+          const SnackBar(content: Text('Downloading Sticker...')),
         );
       }
     } catch (error) {
@@ -330,16 +283,16 @@ class _GifsPageState extends State<GifsPage> {
                 controller: searchController,
                 backgroundColor:
                     MaterialStateProperty.all(Colors.grey.shade100),
-                hintText: "Search gifs...",
+                hintText: "Search Stickers...",
                 onChanged: (value) {
                   setState(() {});
                 },
                 onSubmitted: (value) {
-                  fetchGifs();
+                  fetchStickers();
                 },
                 trailing: <Widget>[
                   TextButton(
-                      onPressed: () => fetchGifs(),
+                      onPressed: () => fetchStickers(),
                       child: const Icon(Icons.search)),
                   TextButton(
                       onPressed: () => clearSearch(),
@@ -398,7 +351,7 @@ class _GifsPageState extends State<GifsPage> {
               padding: const EdgeInsets.only(bottom: 8.0),
               child: SizedBox(
                 height: 30,
-                child: SegmentedButton<GifsProvider>(
+                child: SegmentedButton<StickerProvider>(
                     style: SegmentedButton.styleFrom(
                       // maximumSize: const Size(double.infinity, 15),
 
@@ -407,37 +360,30 @@ class _GifsPageState extends State<GifsPage> {
                       selectedForegroundColor: Colors.white,
                       selectedBackgroundColor: secondaryColor,
                     ),
-                    segments: const <ButtonSegment<GifsProvider>>[
-                      ButtonSegment<GifsProvider>(
-                        value: GifsProvider.Giphy,
-                        label: Text(
-                          'Giphy',
-                          style: TextStyle(height: -1.3),
-                        ),
-                      ),
-                      ButtonSegment<GifsProvider>(
-                        value: GifsProvider.Trending,
+                    segments: const <ButtonSegment<StickerProvider>>[
+                      ButtonSegment<StickerProvider>(
+                        value: StickerProvider.Trending,
                         label: Text(
                           'Trending',
                           style: TextStyle(height: -1.3),
                         ),
                       ),
-                      ButtonSegment<GifsProvider>(
-                        value: GifsProvider.Tenor,
+                      ButtonSegment<StickerProvider>(
+                        value: StickerProvider.Tenor,
                         label: Text(
                           'Tenor',
                           style: TextStyle(height: -1.3),
                         ),
                       ),
                     ],
-                    selected: <GifsProvider>{gifsView},
-                    onSelectionChanged: (Set<GifsProvider> newSelection) {
+                    selected: <StickerProvider>{stickerView},
+                    onSelectionChanged: (Set<StickerProvider> newSelection) {
                       setState(() {
-                        gifsView = newSelection.first;
-                        if (gifsView == GifsProvider.Trending) {
-                          fetchTrandingGifs();
+                        stickerView = newSelection.first;
+                        if (stickerView == StickerProvider.Trending) {
+                          fetchTrandingStickers();
                         } else {
-                          fetchGifs();
+                          fetchStickers();
                         }
                       });
                     }),
@@ -445,10 +391,10 @@ class _GifsPageState extends State<GifsPage> {
             ),
             isSearch
                 ? Expanded(
-                    child: isLoadingGifs
+                    child: isLoadingSticker
                         ? spinkit
-                        : gifsListGiphy.isEmpty && gifsListTenor.isEmpty
-                            ? const Text("Searching for the right GIF..")
+                        : stickerListGiphy.isEmpty && stickerListTenor.isEmpty
+                            ? const Text("Searching for the right Sticker..")
                             : GridView.builder(
                                 padding: const EdgeInsets.all(10.0),
                                 gridDelegate:
@@ -458,30 +404,24 @@ class _GifsPageState extends State<GifsPage> {
                                   crossAxisSpacing: 10.0,
                                   mainAxisSpacing: 10.0,
                                 ),
-                                itemCount: gifsListGiphy.isNotEmpty
-                                    ? gifsListGiphy.length
-                                    : gifsListTenor.length,
+                                itemCount: stickerListGiphy.isNotEmpty
+                                    ? stickerListGiphy.length
+                                    : stickerListTenor.length,
                                 itemBuilder: (context, index) {
                                   return InkWell(
-                                    onTap: () => gifsView == GifsProvider.Giphy
-                                        ? onGifTap(gifsListGiphy[index]
-                                            ['images']['original']['url'])
-                                        : gifsView == GifsProvider.Trending
-                                            ? onGifTap(gifsListGiphy[index]
-                                                ['images']['original']['url'])
-                                            : onGifTap(gifsListTenor[index]
-                                                    ['media_formats']['gif']
-                                                ['url']),
-                                    onLongPress: () => gifsView ==
-                                            GifsProvider.Giphy
-                                        ? onLongPress(gifsListGiphy[index]
-                                            ['images']['original']['url'])
-                                        : gifsView == GifsProvider.Trending
-                                            ? onLongPress(gifsListGiphy[index]
-                                                ['images']['original']['url'])
-                                            : onLongPress(gifsListTenor[index]
-                                                    ['media_formats']['gif']
-                                                ['url']),
+                                    onTap: () => stickerView ==
+                                            StickerProvider.Trending
+                                        ? onStickerTap(stickerListTenor[index]
+                                            ['media'][0]['gif']['url'])
+                                        : onStickerTap(stickerListTenor[index]
+                                                ['media_formats']
+                                            ['tinygifpreview']['url']),
+                                    onLongPress: () => stickerView ==
+                                            StickerProvider.Trending
+                                        ? onLongPress(stickerListTenor[index]
+                                            ['media'][0]['gif']['url'])
+                                        : onLongPress(stickerListTenor[index]
+                                            ['media_formats']['gif']['url']),
                                     child: Container(
                                       decoration: BoxDecoration(
                                         borderRadius:
@@ -494,19 +434,13 @@ class _GifsPageState extends State<GifsPage> {
                                         child: Stack(
                                           children: [
                                             ShowNetworkImage(
-                                              imageSrc: gifsView ==
-                                                      GifsProvider.Giphy
-                                                  ? gifsListGiphy[index]
-                                                          ['images']['original']
-                                                      ['url']
-                                                  : gifsView ==
-                                                          GifsProvider.Trending
-                                                      ? gifsListGiphy[index]
-                                                              ['images']
-                                                          ['original']['url']
-                                                      : gifsListTenor[index]
-                                                              ['media_formats']
-                                                          ['gif']['url'],
+                                              imageSrc: stickerView ==
+                                                      StickerProvider.Trending
+                                                  ? stickerListTenor[index]
+                                                      ['media'][0]['gif']['url']
+                                                  : stickerListTenor[index]
+                                                          ['media_formats']
+                                                      ['gif']['url'],
                                               mobileBoxFit: BoxFit.cover,
                                               mobileHeight: 300,
                                               mobileWidth: 300,
@@ -515,32 +449,24 @@ class _GifsPageState extends State<GifsPage> {
                                               bottom: 10.0,
                                               right: 10.0,
                                               child: GestureDetector(
-                                                onTap: gifsView ==
-                                                        GifsProvider.Giphy
+                                                onTap: stickerView ==
+                                                        StickerProvider.Trending
                                                     ? () => downloadImage(
-                                                        gifsListGiphy[index]['images']
-                                                            ['original']['url'],
-                                                        gifsListGiphy[index]
+                                                        stickerListTenor[index]
+                                                                ['media'][0]
+                                                            ['gif']['url'],
+                                                        stickerListTenor[index]
                                                             ['id'])
-                                                    : gifsView ==
-                                                            GifsProvider
-                                                                .Trending
-                                                        ? () => downloadImage(
-                                                            gifsListGiphy[index]
-                                                                        ['images']
-                                                                    ['original']
-                                                                ['url'],
-                                                            gifsListGiphy[index]
-                                                                ['id'])
-                                                        : () => downloadImage(
-                                                            gifsListTenor[index]
-                                                                    ['media_formats']
-                                                                ['gif']['url'],
-                                                            gifsListTenor[index]
-                                                                ['id']),
+                                                    : () => downloadImage(
+                                                        stickerListTenor[index][
+                                                                    'media_formats']
+                                                                ['tinygifpreview']
+                                                            ['url'],
+                                                        stickerListTenor[index]
+                                                            ['id']),
                                                 child: const Icon(
                                                   Icons.download,
-                                                  color: Colors.white,
+                                                  color: Colors.grey,
                                                   size: 30.0,
                                                 ),
                                               ),

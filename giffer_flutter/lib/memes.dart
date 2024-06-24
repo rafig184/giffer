@@ -6,7 +6,6 @@ import 'dart:convert';
 import 'dart:core';
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
-import 'package:msh_checkbox/msh_checkbox.dart';
 import 'package:show_network_image/show_network_image.dart';
 import 'package:social_share/social_share.dart';
 import 'package:path_provider/path_provider.dart';
@@ -205,10 +204,6 @@ class _MemesPageState extends State<MemesPage> {
     }
   }
 
-  Future<void> onImageTap(imageUrl, id, name) async {
-    _showMyDialog(imageUrl, id, name);
-  }
-
   Future<void> memeShare(imageUrl) async {
     try {
       final directory = await getExternalStorageDirectory();
@@ -272,7 +267,7 @@ class _MemesPageState extends State<MemesPage> {
     }
   }
 
-  Future<void> _showMyDialog(imageUrl, id, name) async {
+  Future<void> onMemeTapDialog(imageUrl, id, name) async {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -295,7 +290,15 @@ class _MemesPageState extends State<MemesPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Flexible(child: Text(name)),
+                            Flexible(
+                                child: Text(
+                              name,
+                              style: TextStyle(
+                                  fontFamily: 'OpenSans',
+                                  fontSize: 15.0,
+                                  // fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade700),
+                            )),
                             TextButton(
                                 onPressed: () {
                                   Navigator.of(context).pop();
@@ -468,7 +471,7 @@ class _MemesPageState extends State<MemesPage> {
                                   final image = filteredMemes[index]['url'];
 
                                   return InkWell(
-                                    onTap: () => onImageTap(
+                                    onTap: () => onMemeTapDialog(
                                         filteredMemes[index]['url'],
                                         filteredMemes[index]['id'],
                                         filteredMemes[index]['name']),
