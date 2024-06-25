@@ -26,6 +26,8 @@ enum GifsProvider { Giphy, Tenor, Trending }
 class _GifsPageState extends State<GifsPage> {
   List<dynamic> gifsListGiphy = [];
   List<dynamic> gifsListTenor = [];
+  List<dynamic> categoriesGiphy = [];
+  List<dynamic> categoriesTenor = [];
   bool isSearch = false;
   TextEditingController searchController = TextEditingController();
   String giphyApiKey = "K1HxaGhOObjpIjOZh0d3mZcsv1pHflei";
@@ -48,6 +50,7 @@ class _GifsPageState extends State<GifsPage> {
   void initState() {
     super.initState();
     fetchTrandingGifs();
+    getCategories();
   }
 
   @override
@@ -60,6 +63,41 @@ class _GifsPageState extends State<GifsPage> {
     color: primaryColor,
     size: 80.0,
   );
+
+  Future<void> getCategories() async {
+    var giphyCatApi =
+        "https://api.giphy.com/v1/gifs/categories?api_key=K1HxaGhOObjpIjOZh0d3mZcsv1pHflei";
+    try {
+      final response = await http.get(Uri.parse(giphyCatApi));
+      if (response.statusCode != 200) {
+        throw Exception('Failed to load categories');
+      } else {
+        setState(() {
+          final data = jsonDecode(response.body);
+          categoriesGiphy = data['data'];
+          print("categories giphy = ${response.body}");
+        });
+      }
+    } catch (e) {
+      print(e);
+    }
+    var tenorCatApi =
+        "https://tenor.googleapis.com/v2/categories?key=AIzaSyBKMCcIReVm4_0YpFUnlhuZkRD_aOfrNCc&client_key=my_test_app";
+    try {
+      final response = await http.get(Uri.parse(tenorCatApi));
+      if (response.statusCode != 200) {
+        throw Exception('Failed to load categories');
+      } else {
+        setState(() {
+          final data = jsonDecode(response.body);
+          categoriesTenor = data['tags'];
+          print("categories tenor = ${response.body}");
+        });
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
 
   Future<void> searchWithAi(searchText) async {
     // Access your API key as an environment variable (see "Set up your API key" above)
@@ -443,6 +481,11 @@ class _GifsPageState extends State<GifsPage> {
                     }),
               ),
             ),
+            ElevatedButton(
+              onPressed: () => onCategoryTap(),
+              child: const Text("Categories",
+                  style: TextStyle(color: secondaryColor)),
+            ),
             isSearch
                 ? Expanded(
                     child: isLoadingGifs
@@ -557,6 +600,233 @@ class _GifsPageState extends State<GifsPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> onCategoryTap() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Directionality(
+          textDirection: TextDirection.ltr,
+          child: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              List<Widget> buttons;
+
+              if (gifsView == GifsProvider.Giphy) {
+                buttons = categoriesGiphy.map((category) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        setState(() {
+                          searchController.text = category['name'];
+                        });
+
+                        fetchGifs();
+                        print('Tapped on ${category['name']}');
+                      },
+                      style: ButtonStyle(
+                        backgroundColor:
+                            MaterialStateProperty.all(Colors.transparent),
+                        shadowColor:
+                            MaterialStateProperty.all(Colors.transparent),
+                        shape: MaterialStateProperty.all(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                                8), // Less rounded corners
+                          ),
+                        ),
+                      ),
+                      child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            image: DecorationImage(
+                              image: NetworkImage(category['gif']['images']
+                                      ['downsized_still']
+                                  ['url']), // or AssetImage if local
+                              fit: BoxFit.cover,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16.0),
+                          alignment: Alignment.center,
+                          child: Stack(
+                            children: [
+                              // Border text
+                              Text(
+                                category['name'],
+                                style: TextStyle(
+                                  fontSize: 20.0,
+                                  foreground: Paint()
+                                    ..style = PaintingStyle.stroke
+                                    ..strokeWidth = 2
+                                    ..color = Colors.black, // Border color
+                                ),
+                              ),
+                              // Fill text
+                              Text(
+                                category['name'],
+                                style: const TextStyle(
+                                  fontSize: 20.0,
+                                  color: Colors.white, // Fill color
+                                ),
+                              ),
+                            ],
+                          )),
+                    ),
+                  );
+                }).toList();
+              } else if (gifsView == GifsProvider.Trending) {
+                buttons = categoriesGiphy.map((category) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          setState(() {
+                            searchController.text = category['name'];
+                          });
+
+                          fetchGifs();
+                          print('Tapped on ${category['name']}');
+                        },
+                        style: ButtonStyle(
+                          backgroundColor:
+                              MaterialStateProperty.all(Colors.transparent),
+                          shadowColor:
+                              MaterialStateProperty.all(Colors.transparent),
+                          shape: MaterialStateProperty.all(
+                            RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                  8), // Less rounded corners
+                            ),
+                          ),
+                        ),
+                        child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              image: DecorationImage(
+                                image: NetworkImage(category['gif']['images']
+                                        ['downsized_still']
+                                    ['url']), // or AssetImage if local
+                                fit: BoxFit.cover,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 16.0),
+                            alignment: Alignment.center,
+                            child: Stack(
+                              children: [
+                                // Border text
+                                Text(
+                                  category['name'],
+                                  style: TextStyle(
+                                    fontSize: 20.0,
+                                    foreground: Paint()
+                                      ..style = PaintingStyle.stroke
+                                      ..strokeWidth = 2
+                                      ..color = Colors.black, // Border color
+                                  ),
+                                ),
+                                // Fill text
+                                Text(
+                                  category['name'],
+                                  style: const TextStyle(
+                                    fontSize: 20.0,
+                                    color: Colors.white, // Fill color
+                                  ),
+                                ),
+                              ],
+                            ))),
+                  );
+                }).toList();
+              } else if (gifsView == GifsProvider.Tenor) {
+                buttons = categoriesTenor.map((category) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          setState(() {
+                            searchController.text = category['searchterm'];
+                          });
+                          fetchGifs();
+                          print('Tapped on ${category['searchterm']}');
+                        },
+                        style: ButtonStyle(
+                          backgroundColor:
+                              MaterialStateProperty.all(Colors.transparent),
+                          shadowColor:
+                              MaterialStateProperty.all(Colors.transparent),
+                          shape: MaterialStateProperty.all(
+                            RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                  8), // Less rounded corners
+                            ),
+                          ),
+                        ),
+                        child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              image: DecorationImage(
+                                image: NetworkImage(category['image']),
+                                fit: BoxFit.cover,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 16.0),
+                            alignment: Alignment.center,
+                            child: Stack(
+                              children: [
+                                // Border text
+                                Text(
+                                  category['searchterm'],
+                                  style: TextStyle(
+                                    fontSize: 20.0,
+                                    foreground: Paint()
+                                      ..style = PaintingStyle.stroke
+                                      ..strokeWidth = 2
+                                      ..color = Colors.black, // Border color
+                                  ),
+                                ),
+                                // Fill text
+                                Text(
+                                  category['searchterm'],
+                                  style: const TextStyle(
+                                    fontSize: 20.0,
+                                    color: Colors.white, // Fill color
+                                  ),
+                                ),
+                              ],
+                            ))),
+                  );
+                }).toList();
+              } else {
+                buttons = [];
+              }
+
+              return Dialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: buttons,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
