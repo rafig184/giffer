@@ -156,7 +156,7 @@ class _ImagesPageState extends State<ImagesPage> {
       });
       if (isLoadingSnackBar) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Downloading image...')),
+          const SnackBar(content: Text('Downloading Image...')),
         );
       }
     } catch (error) {

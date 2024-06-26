@@ -196,7 +196,7 @@ class _MemesPageState extends State<MemesPage> {
       });
       if (isLoadingSnackBar) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Downloading meme...')),
+          const SnackBar(content: Text('Downloading Meme...')),
         );
       }
     } catch (error) {

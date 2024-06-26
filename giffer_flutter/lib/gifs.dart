@@ -346,7 +346,7 @@ class _GifsPageState extends State<GifsPage> {
       });
       if (isLoadingSnackBar) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Downloading gif...')),
+          const SnackBar(content: Text('Downloading GIF...')),
         );
       }
     } catch (error) {
@@ -482,6 +482,8 @@ class _GifsPageState extends State<GifsPage> {
               ),
             ),
             ElevatedButton(
+              style: ButtonStyle(
+                  backgroundColor: MaterialStateProperty.all(Colors.grey[200])),
               onPressed: () => onCategoryTap(),
               child: const Text("Categories",
                   style: TextStyle(color: secondaryColor)),
@@ -809,18 +811,53 @@ class _GifsPageState extends State<GifsPage> {
               }
 
               return Dialog(
+                backgroundColor: Colors.grey[200],
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: buttons,
+                child: Stack(
+                  children: [
+                    SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Container(),
+                                ),
+                                const Text(
+                                  'Categories',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Align(
+                                    alignment: Alignment.centerRight,
+                                    child: IconButton(
+                                      icon: Icon(Icons.close),
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                                height:
+                                    16), // Add some space between the title row and the buttons
+                            ...buttons,
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               );
             },
