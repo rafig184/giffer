@@ -230,6 +230,7 @@ class _ImagesPageState extends State<ImagesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade100,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
@@ -240,7 +241,7 @@ class _ImagesPageState extends State<ImagesPage> {
               child: SearchBar(
                 controller: searchController,
                 backgroundColor:
-                    MaterialStateProperty.all(Colors.grey.shade100),
+                    MaterialStateProperty.all(Colors.grey.shade200),
                 hintText: "Search images...",
                 onChanged: (value) {
                   setState(() {});
@@ -248,11 +249,15 @@ class _ImagesPageState extends State<ImagesPage> {
                 onSubmitted: (value) {
                   fetchImages();
                 },
+                leading: TextButton(
+                    style: ButtonStyle(
+                        iconColor: MaterialStateProperty.all(secondaryColor)),
+                    onPressed: () => fetchImages(),
+                    child: const Icon(Icons.search)),
                 trailing: <Widget>[
                   TextButton(
-                      onPressed: () => fetchImages(),
-                      child: const Icon(Icons.search)),
-                  TextButton(
+                      style: ButtonStyle(
+                          iconColor: MaterialStateProperty.all(secondaryColor)),
                       onPressed: () => clearSearch(),
                       child: const Icon(Icons.close)),
                 ],

@@ -423,6 +423,7 @@ class _MemesPageState extends State<MemesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade100,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
@@ -433,7 +434,7 @@ class _MemesPageState extends State<MemesPage> {
               child: SearchBar(
                 controller: searchController,
                 backgroundColor:
-                    MaterialStateProperty.all(Colors.grey.shade100),
+                    MaterialStateProperty.all(Colors.grey.shade200),
                 hintText: "Search Memes...",
                 onChanged: (value) {
                   setState(() {});
@@ -441,11 +442,15 @@ class _MemesPageState extends State<MemesPage> {
                 onSubmitted: (value) {
                   searchMemes();
                 },
+                leading: TextButton(
+                    style: ButtonStyle(
+                        iconColor: MaterialStateProperty.all(secondaryColor)),
+                    onPressed: () => searchMemes(),
+                    child: const Icon(Icons.search)),
                 trailing: <Widget>[
                   TextButton(
-                      onPressed: () => searchMemes(),
-                      child: const Icon(Icons.search)),
-                  TextButton(
+                      style: ButtonStyle(
+                          iconColor: MaterialStateProperty.all(secondaryColor)),
                       onPressed: () => clearSearch(),
                       child: const Icon(Icons.close)),
                 ],

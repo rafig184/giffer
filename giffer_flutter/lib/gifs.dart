@@ -357,6 +357,7 @@ class _GifsPageState extends State<GifsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade100,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
@@ -367,19 +368,23 @@ class _GifsPageState extends State<GifsPage> {
               child: SearchBar(
                 controller: searchController,
                 backgroundColor:
-                    MaterialStateProperty.all(Colors.grey.shade100),
-                hintText: "Search gifs...",
+                    MaterialStateProperty.all(Colors.grey.shade200),
+                hintText: "Search GIFS...",
                 onChanged: (value) {
                   setState(() {});
                 },
                 onSubmitted: (value) {
                   fetchGifs();
                 },
+                leading: TextButton(
+                    style: ButtonStyle(
+                        iconColor: MaterialStateProperty.all(secondaryColor)),
+                    onPressed: () => fetchGifs(),
+                    child: const Icon(Icons.search)),
                 trailing: <Widget>[
                   TextButton(
-                      onPressed: () => fetchGifs(),
-                      child: const Icon(Icons.search)),
-                  TextButton(
+                      style: ButtonStyle(
+                          iconColor: MaterialStateProperty.all(secondaryColor)),
                       onPressed: () => clearSearch(),
                       child: const Icon(Icons.close)),
                 ],
@@ -830,9 +835,13 @@ class _GifsPageState extends State<GifsPage> {
                                 Expanded(
                                   child: Container(),
                                 ),
-                                const Text(
-                                  'Categories',
-                                  style: TextStyle(
+                                Text(
+                                  gifsView == GifsProvider.Giphy
+                                      ? 'Giphy Categories'
+                                      : gifsView == GifsProvider.Trending
+                                          ? 'Giphy Categories'
+                                          : "Tenor Categories",
+                                  style: const TextStyle(
                                     fontSize: 18,
                                   ),
                                 ),
@@ -840,7 +849,7 @@ class _GifsPageState extends State<GifsPage> {
                                   child: Align(
                                     alignment: Alignment.centerRight,
                                     child: IconButton(
-                                      icon: Icon(Icons.close),
+                                      icon: const Icon(Icons.close),
                                       onPressed: () {
                                         Navigator.of(context).pop();
                                       },
@@ -849,9 +858,7 @@ class _GifsPageState extends State<GifsPage> {
                                 ),
                               ],
                             ),
-                            const SizedBox(
-                                height:
-                                    16), // Add some space between the title row and the buttons
+                            const SizedBox(height: 16),
                             ...buttons,
                           ],
                         ),
