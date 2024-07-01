@@ -1,9 +1,12 @@
 import 'package:android_download_manager/android_download_manager.dart';
+import 'package:contextmenu/contextmenu.dart';
 import 'package:easy_image_viewer/easy_image_viewer.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:core';
 import 'package:flutter/widgets.dart';
+import 'package:giffer_flutter/database/database.dart';
+import 'package:giffer_flutter/model/favorite_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:msh_checkbox/msh_checkbox.dart';
 import 'package:show_network_image/show_network_image.dart';
@@ -13,6 +16,7 @@ import 'dart:io';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:giffer_flutter/colors.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:hive/hive.dart';
 
 class GifsPage extends StatefulWidget {
   const GifsPage();
@@ -21,14 +25,16 @@ class GifsPage extends StatefulWidget {
   State<GifsPage> createState() => _GifsPageState();
 }
 
-enum GifsProvider { Giphy, Tenor, Trending }
+enum GifsProvider { Giphy, Tenor, Trending, Favorites }
 
 class _GifsPageState extends State<GifsPage> {
   List<dynamic> gifsListGiphy = [];
   List<dynamic> gifsListTenor = [];
   List<dynamic> categoriesGiphy = [];
   List<dynamic> categoriesTenor = [];
+  List<dynamic> favorites = [];
   bool isSearch = false;
+  bool isFavorite = false;
   TextEditingController searchController = TextEditingController();
   String giphyApiKey = "K1HxaGhOObjpIjOZh0d3mZcsv1pHflei";
   String tenorApiKey = "AIzaSyBKMCcIReVm4_0YpFUnlhuZkRD_aOfrNCc";
@@ -46,11 +52,20 @@ class _GifsPageState extends State<GifsPage> {
   String giphyApi = "";
   String tenorApi = "";
 
+  // final _mybox = Hive.box('mybox');
+  FavoriteDatabase db = FavoriteDatabase();
+
   @override
   void initState() {
     super.initState();
     fetchTrandingGifs();
     getCategories();
+    if (db.favoriteGifs.isEmpty) {
+      db.createInitialData();
+    } else {
+      db.loadData();
+    }
+    db.updateDatabase();
   }
 
   @override
@@ -96,6 +111,19 @@ class _GifsPageState extends State<GifsPage> {
       }
     } catch (e) {
       print(e);
+    }
+  }
+
+  void getFavorites() {
+    try {
+      isLoadingGifs = true;
+      setState(() {
+        favorites = db.favoriteGifs;
+      });
+    } catch (e) {
+      print(e);
+    } finally {
+      isLoadingGifs = false;
     }
   }
 
@@ -354,6 +382,31 @@ class _GifsPageState extends State<GifsPage> {
     }
   }
 
+  Future<void> addToFavorite(String url, String id) async {
+    final favorite = FavoriteData(id: id, url: url);
+
+    // Check if the favorite already exists in db.favoriteGifs
+    bool alreadyExists = db.favoriteGifs.any((fav) => fav.url == url);
+
+    if (alreadyExists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This item is already in favorites.')),
+      );
+    } else {
+      setState(() {
+        db.addFavorite(favorite);
+        isLoadingSnackBar = true;
+      });
+      if (isLoadingSnackBar) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Added to favorites.')),
+        );
+      }
+    }
+
+    print(db.favoriteGifs.toString());
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -466,6 +519,13 @@ class _GifsPageState extends State<GifsPage> {
                         ),
                       ),
                       ButtonSegment<GifsProvider>(
+                        value: GifsProvider.Favorites,
+                        label: Text(
+                          'Favorites',
+                          style: TextStyle(height: -1.3),
+                        ),
+                      ),
+                      ButtonSegment<GifsProvider>(
                         value: GifsProvider.Tenor,
                         label: Text(
                           'Tenor',
@@ -478,27 +538,39 @@ class _GifsPageState extends State<GifsPage> {
                       setState(() {
                         gifsView = newSelection.first;
                         if (gifsView == GifsProvider.Trending) {
+                          isFavorite = false;
                           fetchTrandingGifs();
+                        } else if (gifsView == GifsProvider.Favorites) {
+                          isFavorite = true;
                         } else {
+                          isFavorite = false;
                           fetchGifs();
                         }
                       });
                     }),
               ),
             ),
-            ElevatedButton(
-              style: ButtonStyle(
-                  backgroundColor: MaterialStateProperty.all(Colors.grey[200])),
-              onPressed: () => onCategoryTap(),
-              child: const Text("Categories",
-                  style: TextStyle(color: secondaryColor)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  style: ButtonStyle(
+                      backgroundColor:
+                          MaterialStateProperty.all(Colors.grey[200])),
+                  onPressed: () => onCategoryTap(),
+                  child: const Text("Categories",
+                      style: TextStyle(color: secondaryColor)),
+                ),
+              ],
             ),
             isSearch
                 ? Expanded(
                     child: isLoadingGifs
                         ? spinkit
-                        : gifsListGiphy.isEmpty && gifsListTenor.isEmpty
-                            ? const Text("Searching for the right GIF..")
+                        : gifsListGiphy.isEmpty &&
+                                gifsListTenor.isEmpty &&
+                                db.favoriteGifs.isEmpty
+                            ? const Text("Cound find any GIF...")
                             : GridView.builder(
                                 padding: const EdgeInsets.all(10.0),
                                 gridDelegate:
@@ -508,10 +580,35 @@ class _GifsPageState extends State<GifsPage> {
                                   crossAxisSpacing: 10.0,
                                   mainAxisSpacing: 10.0,
                                 ),
-                                itemCount: gifsListGiphy.isNotEmpty
-                                    ? gifsListGiphy.length
-                                    : gifsListTenor.length,
+                                itemCount: () {
+                                  if (gifsView == GifsProvider.Giphy) {
+                                    return gifsListGiphy.length;
+                                  } else if (gifsView ==
+                                      GifsProvider.Trending) {
+                                    return gifsListGiphy.length;
+                                  } else if (gifsView ==
+                                      GifsProvider.Favorites) {
+                                    return db.favoriteGifs.length;
+                                  } else {
+                                    return gifsListTenor.length;
+                                  }
+                                }(),
                                 itemBuilder: (context, index) {
+                                  String imageUrl;
+                                  if (gifsView == GifsProvider.Giphy) {
+                                    imageUrl = gifsListGiphy[index]['images']
+                                        ['original']['url'];
+                                  } else if (gifsView ==
+                                      GifsProvider.Trending) {
+                                    imageUrl = gifsListGiphy[index]['images']
+                                        ['original']['url'];
+                                  } else if (gifsView ==
+                                      GifsProvider.Favorites) {
+                                    imageUrl = db.favoriteGifs[index].url;
+                                  } else {
+                                    imageUrl = gifsListTenor[index]
+                                        ['media_formats']['gif']['url'];
+                                  }
                                   return InkWell(
                                     onTap: () => gifsView == GifsProvider.Giphy
                                         ? onGifTap(gifsListGiphy[index]
@@ -519,9 +616,12 @@ class _GifsPageState extends State<GifsPage> {
                                         : gifsView == GifsProvider.Trending
                                             ? onGifTap(gifsListGiphy[index]
                                                 ['images']['original']['url'])
-                                            : onGifTap(gifsListTenor[index]
-                                                    ['media_formats']['gif']
-                                                ['url']),
+                                            : gifsView == GifsProvider.Favorites
+                                                ? onGifTap(
+                                                    db.favoriteGifs[index].url)
+                                                : onGifTap(gifsListTenor[index]
+                                                        ['media_formats']['gif']
+                                                    ['url']),
                                     onLongPress: () => gifsView ==
                                             GifsProvider.Giphy
                                         ? onLongPress(gifsListGiphy[index]
@@ -529,9 +629,13 @@ class _GifsPageState extends State<GifsPage> {
                                         : gifsView == GifsProvider.Trending
                                             ? onLongPress(gifsListGiphy[index]
                                                 ['images']['original']['url'])
-                                            : onLongPress(gifsListTenor[index]
-                                                    ['media_formats']['gif']
-                                                ['url']),
+                                            : gifsView == GifsProvider.Favorites
+                                                ? onLongPress(
+                                                    db.favoriteGifs[index].url)
+                                                : onLongPress(
+                                                    gifsListTenor[index]
+                                                            ['media_formats']
+                                                        ['gif']['url']),
                                     child: Container(
                                       decoration: BoxDecoration(
                                         borderRadius:
@@ -544,19 +648,7 @@ class _GifsPageState extends State<GifsPage> {
                                         child: Stack(
                                           children: [
                                             ShowNetworkImage(
-                                              imageSrc: gifsView ==
-                                                      GifsProvider.Giphy
-                                                  ? gifsListGiphy[index]
-                                                          ['images']['original']
-                                                      ['url']
-                                                  : gifsView ==
-                                                          GifsProvider.Trending
-                                                      ? gifsListGiphy[index]
-                                                              ['images']
-                                                          ['original']['url']
-                                                      : gifsListTenor[index]
-                                                              ['media_formats']
-                                                          ['gif']['url'],
+                                              imageSrc: imageUrl,
                                               mobileBoxFit: BoxFit.cover,
                                               mobileHeight: 300,
                                               mobileWidth: 300,
@@ -565,29 +657,32 @@ class _GifsPageState extends State<GifsPage> {
                                               bottom: 10.0,
                                               right: 10.0,
                                               child: GestureDetector(
-                                                onTap: gifsView ==
+                                                onTap: () => gifsView ==
                                                         GifsProvider.Giphy
-                                                    ? () => downloadImage(
-                                                        gifsListGiphy[index]['images']
+                                                    ? downloadImage(
+                                                        gifsListGiphy[index]
+                                                                ['images']
                                                             ['original']['url'],
                                                         gifsListGiphy[index]
                                                             ['id'])
                                                     : gifsView ==
                                                             GifsProvider
                                                                 .Trending
-                                                        ? () => downloadImage(
+                                                        ? downloadImage(
                                                             gifsListGiphy[index]
                                                                         ['images']
                                                                     ['original']
                                                                 ['url'],
                                                             gifsListGiphy[index]
                                                                 ['id'])
-                                                        : () => downloadImage(
-                                                            gifsListTenor[index]
-                                                                    ['media_formats']
-                                                                ['gif']['url'],
-                                                            gifsListTenor[index]
-                                                                ['id']),
+                                                        : gifsView ==
+                                                                GifsProvider
+                                                                    .Favorites
+                                                            ? downloadImage(
+                                                                db.favoriteGifs[index]
+                                                                    .url,
+                                                                db.favoriteGifs[index].id)
+                                                            : downloadImage(gifsListTenor[index]['media_formats']['gif']['url'], gifsListTenor[index]['id']),
                                                 child: const Icon(
                                                   Icons.download,
                                                   color: Colors.white,
@@ -595,6 +690,45 @@ class _GifsPageState extends State<GifsPage> {
                                                 ),
                                               ),
                                             ),
+                                            !isFavorite
+                                                ? Positioned(
+                                                    bottom: 10.0,
+                                                    left: 10.0,
+                                                    child: GestureDetector(
+                                                      onTap: gifsView ==
+                                                              GifsProvider.Giphy
+                                                          ? () => addToFavorite(
+                                                              gifsListGiphy[index]
+                                                                          ['images']
+                                                                      ['original']
+                                                                  ['url'],
+                                                              gifsListGiphy[index]
+                                                                  ['id'])
+                                                          : gifsView ==
+                                                                  GifsProvider
+                                                                      .Trending
+                                                              ? () => addToFavorite(
+                                                                  gifsListGiphy[index]
+                                                                              ['images']
+                                                                          ['original']
+                                                                      ['url'],
+                                                                  gifsListGiphy[index]
+                                                                      ['id'])
+                                                              : () => addToFavorite(
+                                                                  gifsListTenor[index]
+                                                                              ['media_formats']
+                                                                          ['gif']
+                                                                      ['url'],
+                                                                  gifsListTenor[index]
+                                                                      ['id']),
+                                                      child: const Icon(
+                                                        Icons.favorite,
+                                                        color: Colors.red,
+                                                        size: 30.0,
+                                                      ),
+                                                    ),
+                                                  )
+                                                : Container(),
                                           ],
                                         ),
                                       ),
@@ -873,4 +1007,96 @@ class _GifsPageState extends State<GifsPage> {
       },
     );
   }
+
+  // Future<void> onFavoriteTap() async {
+  //   return showDialog<void>(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (BuildContext context) {
+  //       return Directionality(
+  //         textDirection: TextDirection.ltr,
+  //         child: StatefulBuilder(
+  //           builder: (BuildContext context, StateSetter setState) {
+  //             return Dialog(
+  //               backgroundColor: Colors.grey[200],
+  //               shape: RoundedRectangleBorder(
+  //                 borderRadius: BorderRadius.circular(10),
+  //               ),
+  //               child: SingleChildScrollView(
+  //                 physics: AlwaysScrollableScrollPhysics(),
+  //                 child: Padding(
+  //                   padding: const EdgeInsets.all(16.0),
+  //                   child: Column(
+  //                     mainAxisSize: MainAxisSize.min,
+  //                     crossAxisAlignment: CrossAxisAlignment.stretch,
+  //                     children: [
+  //                       Row(
+  //                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //                         children: [
+  //                           Expanded(
+  //                             child: Container(),
+  //                           ),
+  //                           const Text(
+  //                             "Favorite Gifs",
+  //                             style: TextStyle(
+  //                               fontSize: 18,
+  //                             ),
+  //                           ),
+  //                           Expanded(
+  //                             child: Align(
+  //                               alignment: Alignment.centerRight,
+  //                               child: IconButton(
+  //                                 icon: const Icon(Icons.close),
+  //                                 onPressed: () {
+  //                                   Navigator.of(context).pop();
+  //                                 },
+  //                               ),
+  //                             ),
+  //                           ),
+  //                         ],
+  //                       ),
+  //                       const SizedBox(height: 16),
+  //                       GridView.builder(
+  //                         shrinkWrap: true,
+  //                         physics:
+  //                             NeverScrollableScrollPhysics(), // Disable GridView scrolling
+  //                         padding: const EdgeInsets.all(10.0),
+  //                         gridDelegate:
+  //                             const SliverGridDelegateWithFixedCrossAxisCount(
+  //                           crossAxisCount: 2,
+  //                           childAspectRatio: 1.2,
+  //                           crossAxisSpacing: 10.0,
+  //                           mainAxisSpacing: 10.0,
+  //                         ),
+  //                         itemCount: db.favoriteGifs.length,
+  //                         itemBuilder: (context, index) {
+  //                           return GestureDetector(
+  //                             onTap: () {
+  //                               print(db.favoriteGifs[index].url);
+  //                               showContextMenu(context);
+  //                             },
+  //                             child: Padding(
+  //                               padding:
+  //                                   const EdgeInsets.symmetric(vertical: 4.0),
+  //                               child: ShowNetworkImage(
+  //                                 imageSrc: db.favoriteGifs[index].url,
+  //                                 mobileBoxFit: BoxFit.cover,
+  //                                 mobileHeight: 300,
+  //                                 mobileWidth: 300,
+  //                               ),
+  //                             ),
+  //                           );
+  //                         },
+  //                       ),
+  //                     ],
+  //                   ),
+  //                 ),
+  //               ),
+  //             );
+  //           },
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
 }
