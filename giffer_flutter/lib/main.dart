@@ -20,12 +20,12 @@ class MyHttpOverrides extends HttpOverrides {
 }
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   final appDocumentDir = await path_provider.getApplicationDocumentsDirectory();
   Hive.init(appDocumentDir.path);
   Hive.registerAdapter(FavoriteDataAdapter());
-  await Hive.openBox<FavoriteData>('mybox');
-  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.openBox('mybox');
   HttpOverrides.global = MyHttpOverrides();
   runApp(const MyApp());
 }

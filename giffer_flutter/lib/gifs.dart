@@ -51,21 +51,27 @@ class _GifsPageState extends State<GifsPage> {
   String resultAI = "";
   String giphyApi = "";
   String tenorApi = "";
+  Set<String> favoriteGifIds = {};
 
-  // final _mybox = Hive.box('mybox');
-  FavoriteDatabase db = FavoriteDatabase();
+  final _mybox = Hive.box('mybox');
+  late FavoriteDatabase db;
 
   @override
   void initState() {
     super.initState();
+    db = FavoriteDatabase();
     fetchTrandingGifs();
     getCategories();
-    if (db.favoriteGifs.isEmpty) {
+    initializeDatabase();
+  }
+
+  Future<void> initializeDatabase() async {
+    if (_mybox.get("FAVORITELIST") == null) {
       db.createInitialData();
     } else {
       db.loadData();
     }
-    db.updateDatabase();
+    setState(() {});
   }
 
   @override
@@ -385,26 +391,41 @@ class _GifsPageState extends State<GifsPage> {
   Future<void> addToFavorite(String url, String id) async {
     final favorite = FavoriteData(id: id, url: url);
 
-    // Check if the favorite already exists in db.favoriteGifs
-    bool alreadyExists = db.favoriteGifs.any((fav) => fav.url == url);
-
-    if (alreadyExists) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This item is already in favorites.')),
-      );
-    } else {
-      setState(() {
+    setState(() {
+      if (db.isFavorite(id)) {
+        db.deleteFavorite(favorite);
+      } else {
         db.addFavorite(favorite);
-        isLoadingSnackBar = true;
-      });
-      if (isLoadingSnackBar) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Added to favorites.')),
-        );
       }
+      isLoadingSnackBar = true;
+    });
+
+    if (isLoadingSnackBar) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(db.isFavorite(id)
+              ? 'Added to favorites..'
+              : 'Removed from favorites..'),
+        ),
+      );
     }
 
-    print(db.favoriteGifs.toString());
+    // Print each FavoriteData instance in a readable format
+    for (var favorite in db.favoriteGifs) {
+      print(favorite);
+    }
+  }
+
+  Future<void> removeFromFavorites(String url, String id) async {
+    final favorite = FavoriteData(id: id, url: url);
+    setState(() {
+      db.deleteFavorite(favorite);
+      favoriteGifIds.remove(id);
+    });
+  }
+
+  Color heartColor(String gifId) {
+    return favoriteGifIds.contains(gifId) ? Colors.red : Colors.white;
   }
 
   @override
@@ -654,7 +675,7 @@ class _GifsPageState extends State<GifsPage> {
                                               mobileWidth: 300,
                                             ),
                                             Positioned(
-                                              bottom: 10.0,
+                                              bottom: 6.0,
                                               right: 10.0,
                                               child: GestureDetector(
                                                 onTap: () => gifsView ==
@@ -683,11 +704,18 @@ class _GifsPageState extends State<GifsPage> {
                                                                     .url,
                                                                 db.favoriteGifs[index].id)
                                                             : downloadImage(gifsListTenor[index]['media_formats']['gif']['url'], gifsListTenor[index]['id']),
-                                                child: const Icon(
-                                                  Icons.download,
-                                                  color: Colors.white,
-                                                  size: 30.0,
-                                                ),
+                                                child: const Stack(children: [
+                                                  Icon(
+                                                    Icons.download,
+                                                    color: Colors.white,
+                                                    size: 40.0,
+                                                  ),
+                                                  Icon(
+                                                    Icons.download_outlined,
+                                                    color: Colors.black,
+                                                    size: 40.0,
+                                                  ),
+                                                ]),
                                               ),
                                             ),
                                             !isFavorite
@@ -721,14 +749,76 @@ class _GifsPageState extends State<GifsPage> {
                                                                       ['url'],
                                                                   gifsListTenor[index]
                                                                       ['id']),
-                                                      child: const Icon(
-                                                        Icons.favorite,
-                                                        color: Colors.red,
-                                                        size: 30.0,
+                                                      child: Stack(
+                                                        alignment:
+                                                            Alignment.center,
+                                                        children: [
+                                                          Icon(
+                                                            Icons.favorite,
+                                                            color: db
+                                                                    .isFavorite(
+                                                              gifsView ==
+                                                                      GifsProvider
+                                                                          .Giphy
+                                                                  ? gifsListGiphy[
+                                                                          index]
+                                                                      ['id']
+                                                                  : gifsView ==
+                                                                          GifsProvider
+                                                                              .Trending
+                                                                      ? gifsListGiphy[
+                                                                              index]
+                                                                          ['id']
+                                                                      : gifsListTenor[
+                                                                              index]
+                                                                          [
+                                                                          'id'],
+                                                            )
+                                                                ? Colors.red
+                                                                : Colors.white,
+                                                            size: 30.0,
+                                                          ),
+                                                          const Icon(
+                                                            Icons
+                                                                .favorite_border,
+                                                            color: Colors.black,
+                                                            size: 30.0,
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
                                                   )
-                                                : Container(),
+                                                : Positioned(
+                                                    top: 10.0,
+                                                    left: 10.0,
+                                                    child: GestureDetector(
+                                                      onTap: () =>
+                                                          removeFromFavorites(
+                                                              db
+                                                                  .favoriteGifs[
+                                                                      index]
+                                                                  .url,
+                                                              db
+                                                                  .favoriteGifs[
+                                                                      index]
+                                                                  .id),
+                                                      child: const Stack(
+                                                          children: [
+                                                            Icon(
+                                                              Icons.close,
+                                                              color:
+                                                                  Colors.black,
+                                                              size: 35.0,
+                                                            ),
+                                                            Icon(
+                                                              Icons.close,
+                                                              color:
+                                                                  Colors.white,
+                                                              size: 30.0,
+                                                            ),
+                                                          ]),
+                                                    ),
+                                                  ),
                                           ],
                                         ),
                                       ),
@@ -745,6 +835,13 @@ class _GifsPageState extends State<GifsPage> {
   }
 
   Future<void> onCategoryTap() async {
+    if (gifsView == GifsProvider.Favorites) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Can't select Categories on Favorites tab..")),
+      );
+      return;
+    }
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -1007,96 +1104,4 @@ class _GifsPageState extends State<GifsPage> {
       },
     );
   }
-
-  // Future<void> onFavoriteTap() async {
-  //   return showDialog<void>(
-  //     context: context,
-  //     barrierDismissible: false,
-  //     builder: (BuildContext context) {
-  //       return Directionality(
-  //         textDirection: TextDirection.ltr,
-  //         child: StatefulBuilder(
-  //           builder: (BuildContext context, StateSetter setState) {
-  //             return Dialog(
-  //               backgroundColor: Colors.grey[200],
-  //               shape: RoundedRectangleBorder(
-  //                 borderRadius: BorderRadius.circular(10),
-  //               ),
-  //               child: SingleChildScrollView(
-  //                 physics: AlwaysScrollableScrollPhysics(),
-  //                 child: Padding(
-  //                   padding: const EdgeInsets.all(16.0),
-  //                   child: Column(
-  //                     mainAxisSize: MainAxisSize.min,
-  //                     crossAxisAlignment: CrossAxisAlignment.stretch,
-  //                     children: [
-  //                       Row(
-  //                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //                         children: [
-  //                           Expanded(
-  //                             child: Container(),
-  //                           ),
-  //                           const Text(
-  //                             "Favorite Gifs",
-  //                             style: TextStyle(
-  //                               fontSize: 18,
-  //                             ),
-  //                           ),
-  //                           Expanded(
-  //                             child: Align(
-  //                               alignment: Alignment.centerRight,
-  //                               child: IconButton(
-  //                                 icon: const Icon(Icons.close),
-  //                                 onPressed: () {
-  //                                   Navigator.of(context).pop();
-  //                                 },
-  //                               ),
-  //                             ),
-  //                           ),
-  //                         ],
-  //                       ),
-  //                       const SizedBox(height: 16),
-  //                       GridView.builder(
-  //                         shrinkWrap: true,
-  //                         physics:
-  //                             NeverScrollableScrollPhysics(), // Disable GridView scrolling
-  //                         padding: const EdgeInsets.all(10.0),
-  //                         gridDelegate:
-  //                             const SliverGridDelegateWithFixedCrossAxisCount(
-  //                           crossAxisCount: 2,
-  //                           childAspectRatio: 1.2,
-  //                           crossAxisSpacing: 10.0,
-  //                           mainAxisSpacing: 10.0,
-  //                         ),
-  //                         itemCount: db.favoriteGifs.length,
-  //                         itemBuilder: (context, index) {
-  //                           return GestureDetector(
-  //                             onTap: () {
-  //                               print(db.favoriteGifs[index].url);
-  //                               showContextMenu(context);
-  //                             },
-  //                             child: Padding(
-  //                               padding:
-  //                                   const EdgeInsets.symmetric(vertical: 4.0),
-  //                               child: ShowNetworkImage(
-  //                                 imageSrc: db.favoriteGifs[index].url,
-  //                                 mobileBoxFit: BoxFit.cover,
-  //                                 mobileHeight: 300,
-  //                                 mobileWidth: 300,
-  //                               ),
-  //                             ),
-  //                           );
-  //                         },
-  //                       ),
-  //                     ],
-  //                   ),
-  //                 ),
-  //               ),
-  //             );
-  //           },
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
 }
