@@ -1,5 +1,6 @@
 import 'package:android_download_manager/android_download_manager.dart';
 import 'package:easy_image_viewer/easy_image_viewer.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:core';
@@ -400,11 +401,20 @@ class _ImagesPageState extends State<ImagesPage> {
                                                       : imageListPexels[index]
                                                           ['id'],
                                                 ),
-                                                child: const Icon(
-                                                  Icons.download,
-                                                  color: Colors.white,
-                                                  size: 30.0,
-                                                ),
+                                                child: const Stack(children: [
+                                                  Icon(
+                                                    CupertinoIcons
+                                                        .arrow_down_square_fill,
+                                                    color: Colors.white,
+                                                    size: 30.0,
+                                                  ),
+                                                  Icon(
+                                                    CupertinoIcons
+                                                        .arrow_down_square,
+                                                    color: Colors.black,
+                                                    size: 30.0,
+                                                  ),
+                                                ]),
                                               ),
                                             ),
                                           ],

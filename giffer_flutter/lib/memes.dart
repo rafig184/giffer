@@ -506,11 +506,20 @@ class _MemesPageState extends State<MemesPage> {
                                                 onTap: () => downloadImage(
                                                     filteredMemes[index]['url'],
                                                     filteredMemes[index]['id']),
-                                                child: const Icon(
-                                                  Icons.download,
-                                                  color: Colors.white,
-                                                  size: 30.0,
-                                                ),
+                                                child: const Stack(children: [
+                                                  Icon(
+                                                    CupertinoIcons
+                                                        .arrow_down_square_fill,
+                                                    color: Colors.white,
+                                                    size: 30.0,
+                                                  ),
+                                                  Icon(
+                                                    CupertinoIcons
+                                                        .arrow_down_square,
+                                                    color: Colors.black,
+                                                    size: 30.0,
+                                                  ),
+                                                ]),
                                               ),
                                             ),
                                           ],

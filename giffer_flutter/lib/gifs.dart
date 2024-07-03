@@ -1,6 +1,7 @@
 import 'package:android_download_manager/android_download_manager.dart';
 import 'package:contextmenu/contextmenu.dart';
 import 'package:easy_image_viewer/easy_image_viewer.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:core';
@@ -179,6 +180,12 @@ class _GifsPageState extends State<GifsPage> {
   }
 
   Future fetchGifs() async {
+    if (gifsView == GifsProvider.Favorites) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Can't Search on Favorites tab..")),
+      );
+      return;
+    }
     setState(() {
       gifsListGiphy = [];
       gifsListTenor = [];
@@ -424,6 +431,13 @@ class _GifsPageState extends State<GifsPage> {
     });
   }
 
+  Future<void> removeAllFromFavorites() async {
+    await db.deleteAll();
+    setState(() {
+      favoriteGifIds.clear();
+    });
+  }
+
   Color heartColor(String gifId) {
     return favoriteGifIds.contains(gifId) ? Colors.red : Colors.white;
   }
@@ -574,14 +588,23 @@ class _GifsPageState extends State<GifsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ElevatedButton(
-                  style: ButtonStyle(
-                      backgroundColor:
-                          MaterialStateProperty.all(Colors.grey[200])),
-                  onPressed: () => onCategoryTap(),
-                  child: const Text("Categories",
-                      style: TextStyle(color: secondaryColor)),
-                ),
+                gifsView == GifsProvider.Favorites
+                    ? ElevatedButton(
+                        style: ButtonStyle(
+                            backgroundColor:
+                                MaterialStateProperty.all(Colors.grey[200])),
+                        onPressed: () => removeAllFromFavorites(),
+                        child: const Text("Clear all",
+                            style: TextStyle(color: secondaryColor)),
+                      )
+                    : ElevatedButton(
+                        style: ButtonStyle(
+                            backgroundColor:
+                                MaterialStateProperty.all(Colors.grey[200])),
+                        onPressed: () => onCategoryTap(),
+                        child: const Text("Categories",
+                            style: TextStyle(color: secondaryColor)),
+                      ),
               ],
             ),
             isSearch
@@ -591,7 +614,7 @@ class _GifsPageState extends State<GifsPage> {
                         : gifsListGiphy.isEmpty &&
                                 gifsListTenor.isEmpty &&
                                 db.favoriteGifs.isEmpty
-                            ? const Text("Cound find any GIF...")
+                            ? const Text("Couldn't find any GIF...")
                             : GridView.builder(
                                 padding: const EdgeInsets.all(10.0),
                                 gridDelegate:
@@ -675,7 +698,7 @@ class _GifsPageState extends State<GifsPage> {
                                               mobileWidth: 300,
                                             ),
                                             Positioned(
-                                              bottom: 6.0,
+                                              bottom: 10.0,
                                               right: 10.0,
                                               child: GestureDetector(
                                                 onTap: () => gifsView ==
@@ -706,14 +729,16 @@ class _GifsPageState extends State<GifsPage> {
                                                             : downloadImage(gifsListTenor[index]['media_formats']['gif']['url'], gifsListTenor[index]['id']),
                                                 child: const Stack(children: [
                                                   Icon(
-                                                    Icons.download,
+                                                    CupertinoIcons
+                                                        .arrow_down_square_fill,
                                                     color: Colors.white,
-                                                    size: 40.0,
+                                                    size: 30.0,
                                                   ),
                                                   Icon(
-                                                    Icons.download_outlined,
+                                                    CupertinoIcons
+                                                        .arrow_down_square,
                                                     color: Colors.black,
-                                                    size: 40.0,
+                                                    size: 30.0,
                                                   ),
                                                 ]),
                                               ),
@@ -805,15 +830,17 @@ class _GifsPageState extends State<GifsPage> {
                                                       child: const Stack(
                                                           children: [
                                                             Icon(
-                                                              Icons.close,
-                                                              color:
-                                                                  Colors.black,
-                                                              size: 35.0,
-                                                            ),
-                                                            Icon(
-                                                              Icons.close,
+                                                              CupertinoIcons
+                                                                  .xmark_circle_fill,
                                                               color:
                                                                   Colors.white,
+                                                              size: 30.0,
+                                                            ),
+                                                            Icon(
+                                                              CupertinoIcons
+                                                                  .xmark_circle,
+                                                              color:
+                                                                  Colors.black,
                                                               size: 30.0,
                                                             ),
                                                           ]),
@@ -835,13 +862,6 @@ class _GifsPageState extends State<GifsPage> {
   }
 
   Future<void> onCategoryTap() async {
-    if (gifsView == GifsProvider.Favorites) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("Can't select Categories on Favorites tab..")),
-      );
-      return;
-    }
     return showDialog<void>(
       context: context,
       barrierDismissible: false,

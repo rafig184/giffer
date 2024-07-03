@@ -34,6 +34,12 @@ class FavoriteDatabase {
     _myBox.delete(favorite.id);
   }
 
+  Future<void> deleteAll() async {
+    // Assuming favoriteGifIds is a list of keys
+    await _myBox.clear();
+    favoriteGifs.clear();
+  }
+
   bool isFavorite(String id) {
     return favoriteGifs.any((favorite) => favorite.id == id);
   }
