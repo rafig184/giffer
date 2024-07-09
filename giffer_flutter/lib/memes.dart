@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:android_download_manager/android_download_manager.dart';
 import 'package:easy_image_viewer/easy_image_viewer.dart';
 import 'package:flutter/cupertino.dart';
@@ -5,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:core';
 import 'package:flutter/widgets.dart';
+import 'package:giffer_flutter/ui-widgets/spinners.dart';
 import 'package:http/http.dart' as http;
 import 'package:show_network_image/show_network_image.dart';
 import 'package:social_share/social_share.dart';
@@ -52,11 +55,6 @@ class _MemesPageState extends State<MemesPage> {
     topTextController.dispose();
     bottomTextController.dispose();
   }
-
-  final spinkit = const SpinKitFadingCircle(
-    color: primaryColor,
-    size: 80.0,
-  );
 
   Future<void> fetchTopMemes() async {
     setState(() {
@@ -493,11 +491,25 @@ class _MemesPageState extends State<MemesPage> {
                                             BorderRadius.circular(10.0),
                                         child: Stack(
                                           children: [
-                                            ShowNetworkImage(
-                                              imageSrc: image,
-                                              mobileBoxFit: BoxFit.cover,
-                                              mobileHeight: 300,
-                                              mobileWidth: 300,
+                                            FutureBuilder(
+                                              future: _loadImage(image),
+                                              builder: (context, snapshot) {
+                                                if (snapshot.connectionState ==
+                                                    ConnectionState.waiting) {
+                                                  return const Center(
+                                                      child: smallSpinkit);
+                                                } else if (snapshot.hasError) {
+                                                  return const Center(
+                                                      child: Icon(Icons.error));
+                                                } else {
+                                                  return ShowNetworkImage(
+                                                    imageSrc: image,
+                                                    mobileBoxFit: BoxFit.cover,
+                                                    mobileHeight: 300,
+                                                    mobileWidth: 300,
+                                                  );
+                                                }
+                                              },
                                             ),
                                             Positioned(
                                               bottom: 10.0,
@@ -535,5 +547,27 @@ class _MemesPageState extends State<MemesPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _loadImage(String url) async {
+    final Completer<void> completer = Completer();
+    final image = Image.network(url);
+
+    final ImageStreamListener listener = ImageStreamListener(
+      (ImageInfo image, bool synchronousCall) {
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
+      },
+      onError: (dynamic exception, StackTrace? stackTrace) {
+        if (!completer.isCompleted) {
+          completer.completeError(exception);
+        }
+      },
+    );
+
+    image.image.resolve(ImageConfiguration()).addListener(listener);
+
+    return completer.future;
   }
 }

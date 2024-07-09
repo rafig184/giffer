@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:android_download_manager/android_download_manager.dart';
 import 'package:contextmenu/contextmenu.dart';
 import 'package:easy_image_viewer/easy_image_viewer.dart';
@@ -8,13 +9,14 @@ import 'dart:core';
 import 'package:flutter/widgets.dart';
 import 'package:giffer_flutter/database/database.dart';
 import 'package:giffer_flutter/model/favorite_model.dart';
+import 'package:giffer_flutter/ui-widgets/spinners.dart';
 import 'package:http/http.dart' as http;
 import 'package:msh_checkbox/msh_checkbox.dart';
 import 'package:show_network_image/show_network_image.dart';
 import 'package:social_share/social_share.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
+// import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:giffer_flutter/colors.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:hive/hive.dart';
@@ -80,11 +82,6 @@ class _GifsPageState extends State<GifsPage> {
     super.dispose();
     searchController.dispose();
   }
-
-  final spinkit = const SpinKitFadingCircle(
-    color: primaryColor,
-    size: 80.0,
-  );
 
   Future<void> getCategories() async {
     var giphyCatApi =
@@ -691,11 +688,25 @@ class _GifsPageState extends State<GifsPage> {
                                             BorderRadius.circular(10.0),
                                         child: Stack(
                                           children: [
-                                            ShowNetworkImage(
-                                              imageSrc: imageUrl,
-                                              mobileBoxFit: BoxFit.cover,
-                                              mobileHeight: 300,
-                                              mobileWidth: 300,
+                                            FutureBuilder(
+                                              future: _loadImage(imageUrl),
+                                              builder: (context, snapshot) {
+                                                if (snapshot.connectionState ==
+                                                    ConnectionState.waiting) {
+                                                  return const Center(
+                                                      child: smallSpinkit);
+                                                } else if (snapshot.hasError) {
+                                                  return const Center(
+                                                      child: Icon(Icons.error));
+                                                } else {
+                                                  return ShowNetworkImage(
+                                                    imageSrc: imageUrl,
+                                                    mobileBoxFit: BoxFit.cover,
+                                                    mobileHeight: 300,
+                                                    mobileWidth: 300,
+                                                  );
+                                                }
+                                              },
                                             ),
                                             Positioned(
                                               bottom: 10.0,
@@ -1123,5 +1134,27 @@ class _GifsPageState extends State<GifsPage> {
         );
       },
     );
+  }
+
+  Future<void> _loadImage(String url) async {
+    final Completer<void> completer = Completer();
+    final image = Image.network(url);
+
+    final ImageStreamListener listener = ImageStreamListener(
+      (ImageInfo image, bool synchronousCall) {
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
+      },
+      onError: (dynamic exception, StackTrace? stackTrace) {
+        if (!completer.isCompleted) {
+          completer.completeError(exception);
+        }
+      },
+    );
+
+    image.image.resolve(ImageConfiguration()).addListener(listener);
+
+    return completer.future;
   }
 }
